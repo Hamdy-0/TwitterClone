@@ -6,7 +6,9 @@ block content
         form(method="post") 
             p.errorMessage #{errorMessage}
 
-            input(type="text", name="logUsername",placeholder="Username or email",value=logUsername,required="")
-            input(type="password", name="loginPassword",placeholder="Password",required="")
+            //- input(type="text", name="logUsername",placeholder="Username or email",value=logUsername,required="")
+            //- input(type="password", name="loginPassword",placeholder="Password",required="")
+            input(type="text", name="logUsername",placeholder="Username or email",value="hamdyoues",required="")
+            input(type="password", name="loginPassword",placeholder="Password",value="password",required="")
             input(type="submit", value="Login")
         a(href="/register") Need an account? Register here.
