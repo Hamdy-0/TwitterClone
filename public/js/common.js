@@ -1,7 +1,11 @@
-$("#postTextarea").keyup((event) => {
+$("#postTextarea,#replyextarea").keyup((event) => {
   const textbox = $(event.target);
   const value = textbox.val().trim();
-  const submitButton = $("#submitPostButton");
+
+  let isModal = textbox.parents(".modal").length == 1;
+  const submitButton = isModal
+    ? $("#submitReplyButton")
+    : $("#submitPostButton");
   if (submitButton.length == 0) return alert("no submit button found");
 
   if (value == "") {
@@ -11,20 +15,42 @@ $("#postTextarea").keyup((event) => {
   submitButton.prop("disabled", false);
   return;
 });
-$("#submitPostButton").click((event) => {
+$("#submitPostButton,#submitReplyButton").click((event) => {
   const button = $(event.target);
-  const textbox = $("#postTextarea");
+
+  let isModal = button.parents(".modal").length == 1;
+
+  const textbox = isModal ? $("#replyextarea") : $("#postTextarea");
 
   const data = {
     content: textbox.val(),
   };
-
+  if (isModal) {
+    let id = button.data().id;
+    if (id == null) return alert("Button id is null");
+    data.replyTo = id;
+  }
   $.post("/api/posts", data, (postData) => {
-    const html = createPostHtml(postData);
-    $(".postContainer").prepend(html);
-    textbox.val("");
-    button.prop("disabled", true);
+    if (postData.replyTo) {
+      location.reload();
+    } else {
+      const html = createPostHtml(postData);
+      $(".postContainer").prepend(html);
+      textbox.val("");
+      button.prop("disabled", true);
+    }
   });
+});
+$("#replyModal").on("show.bs.modal", (event) => {
+  const button = $(event.relatedTarget);
+  const postId = getPostIdFromElement(button);
+  $("#submitReplyButton").data("id", postId);
+  $.get("/api/posts/" + postId, (results) => {
+    outputPosts(results, $("#originalPostContainer"));
+  });
+});
+$("#replyModal").on("hidden.bs.modal", () => {
+  $("#originalPostContainer").html("");
 });
 $(document).on("click", ".likeButton", (event) => {
   const button = $(event.target);
@@ -77,7 +103,6 @@ function createPostHtml(postData) {
   const retweetedBy = isRetweet ? postData.postedBy.username : null;
   postData = isRetweet ? postData.retweetData : postData;
 
-  console.log(isRetweet);
   const postedBy = postData.postedBy;
 
   if (postedBy._id === undefined) {
@@ -100,6 +125,20 @@ function createPostHtml(postData) {
     <span>Retweeted by <a href='/profile/${retweetedBy}'>${retweetedBy}</a>
     </span>`;
   }
+
+  let replyFlag = "";
+  if (postData.replyTo) {
+    if (!postData.replyTo._id) {
+      return alert("Reply to is not populated");
+    } else if (!postData.replyTo.postedBy._id) {
+      return alert("PostedBy to is not populated");
+    }
+
+    let replyToUsername = postData.replyTo.postedBy.username;
+    replyFlag = `<div class='replyFlag'>
+                       Replying to <a href='/profile/${replyToUsername}'>@${replyToUsername}</a>
+                </div>`;
+  }
   return `<div class='post' data-id='${postData._id}'>
   <div class='postActionContainer'>
   ${retweetText}
@@ -116,12 +155,13 @@ function createPostHtml(postData) {
             <span class='username'>@${postedBy.username}</span>
             <span class='date'>${timeStamp}</span>
           </div>
+          ${replyFlag}
           <div class="postBody">
             <span>${postData.content}</span>
           </div>
           <div class="postFooter">
             <div class="postButtonContainer">
-            <button>
+            <button type="button", data-bs-toggle="modal", data-bs-target="#replyModal">
                 <i class='far fa-comment'></i>
             </button> 
             </div>
@@ -166,5 +206,19 @@ function timeDifference(current, previous) {
     return Math.round(elapsed / msPerMonth) + " months ago";
   } else {
     return Math.round(elapsed / msPerYear) + " years ago";
+  }
+}
+function outputPosts(results, container) {
+  container.html("");
+
+  if (!Array.isArray(results)) {
+    results = [results];
+  }
+  results.forEach((result) => {
+    const html = createPostHtml(result);
+    container.append(html);
+  });
+  if (results.length == 0) {
+    container.append("<span class='noResults'>Nothing to show.</span>");
   }
 }
