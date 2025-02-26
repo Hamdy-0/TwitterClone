@@ -25,22 +25,55 @@ router.get("/:username/replies", async (req, res, next) => {
   payload.selectedTab = "replies";
   res.status(200).render("profilePage", payload);
 });
+router.get("/:username/following", async (req, res, next) => {
+  let payload = await getPayload(req.params.username, req.session.user);
+  payload.selectedTab = "following";
 
+  res.status(200).render("followersAndFollowing", payload);
+});
+router.get("/:username/followers", async (req, res, next) => {
+  let payload = await getPayload(req.params.username, req.session.user);
+  payload.selectedTab = "followers";
+  res.status(200).render("followersAndFollowing", payload);
+});
+
+// async function getPayload(username, userLoggedIn) {
+//   let user = await User.findOne({ username });
+//   // Check if the username is a valid ObjectId
+//   if (mongoose.Types.ObjectId.isValid(username)) {
+//     user = await User.findById(username);
+//   } else {
+//     user = await User.findOne({ username: username });
+//   }
+//   if (user == null) {
+//     return {
+//       pageTitle: "User not found",
+//       userLoggedIn: userLoggedIn,
+//       userLoggedInJs: JSON.stringify(userLoggedIn),
+//     };
+//   }
+//   return {
+//     pageTitle: user.username,
+//     userLoggedIn: userLoggedIn,
+//     userLoggedInJs: JSON.stringify(userLoggedIn),
+//     profileUser: user,
+//   };
+// }
 async function getPayload(username, userLoggedIn) {
-  let user = await User.findOne({ username });
-  // Check if the username is a valid ObjectId
-  if (mongoose.Types.ObjectId.isValid(username)) {
-    user = await User.findById(username);
-  } else {
-    user = await User.findOne({ username: username });
-  }
+  var user = await User.findOne({ username: username });
+
   if (user == null) {
-    return {
-      pageTitle: "User not found",
-      userLoggedIn: userLoggedIn,
-      userLoggedInJs: JSON.stringify(userLoggedIn),
-    };
+    user = await User.findById(username);
+
+    if (user == null) {
+      return {
+        pageTitle: "User not found",
+        userLoggedIn: userLoggedIn,
+        userLoggedInJs: JSON.stringify(userLoggedIn),
+      };
+    }
   }
+
   return {
     pageTitle: user.username,
     userLoggedIn: userLoggedIn,
@@ -48,5 +81,4 @@ async function getPayload(username, userLoggedIn) {
     profileUser: user,
   };
 }
-
 module.exports = router;

@@ -14,9 +14,24 @@ router.get("/", async (req, res, next) => {
     let isReply = searchObj.isReply == "true";
     searchObj.replyTo = { $exists: isReply };
     delete searchObj.isReply;
-    console.log(searchObj);
   }
+  if (searchObj.followingOnly !== undefined) {
+    let followingOnly = searchObj.followingOnly == "true";
+    if (followingOnly) {
+      let objectIds = [];
+      if (!req.session.user.following) {
+        req.session.user.following = [];
+      }
+      req.session.user.following.forEach((user) => {
+        objectIds.push(user);
+      });
 
+      objectIds.push(req.session.user._id);
+      searchObj.postedBy = { $in: objectIds };
+    }
+
+    delete searchObj.followingOnly;
+  }
   let results = await getPosts(searchObj);
   res.status(200).send(results);
 });
@@ -142,6 +157,23 @@ router.post("/:id/retweet", async (req, res, next) => {
 router.delete("/:id", (req, res, next) => {
   Post.findByIdAndDelete(req.params.id)
     .then(() => res.sendStatus(202))
+    .catch((err) => {
+      console.log(err);
+      res.sendStatus(400);
+    });
+});
+router.put("/:id", async (req, res, next) => {
+  if (req.body.pinned !== undefined) {
+    await Post.updateMany(
+      { postedBy: req.session.user },
+      { pinned: false }
+    ).catch((err) => {
+      console.log(err);
+      res.sendStatus(400);
+    });
+  }
+  Post.findByIdAndUpdate(req.params.id, req.body)
+    .then(() => res.sendStatus(204))
     .catch((err) => {
       console.log(err);
       res.sendStatus(400);

@@ -42,6 +42,8 @@ mixin createDeletePostModal()
 mixin createPostModals(userLoggedIn)
     +createReplyModal(userLoggedIn)
     +createDeletePostModal()
+    +createPinPostUploadModal()
+    +createUnpinPostModal()
 
 mixin createFollowButton(user,isFollowing)
     - text = isFollowing ? "Following" : "Follow"
@@ -53,3 +55,75 @@ mixin createTab(name,href,isSelected)
     -className = isSelected ? "tab active" : "tab"
     a(href=href class=className)
         span #{name} 
+
+mixin createImageUploadModal()
+    #imageUploadModal.modal.fade(tabindex="-1", aria-labelledby="imageUploadModalModalLabel", aria-hidden="true")
+        .modal-dialog
+            .modal-content
+                .modal-header
+                    h5#imageUploadModalModalLabel.modal-title Upload a new profile picture
+                    button.btn-close(type="button", data-bs-dismiss="modal", aria-label="Close")
+                .modal-body
+                    input#filePhoto(type="file", name="filePhoto")
+
+                    .imagePreviewContainer 
+                        img#imagePreview
+
+                .modal-footer
+                    button.btn.btn-secondary(type="button", data-bs-dismiss="modal") Cancel
+                    button#imageUploadButton.btn.btn-primary(type="button") Save
+
+
+mixin createCoverPhotoUploadModal()
+    #coverPhotoUploadModal.modal.fade(tabindex="-1", aria-labelledby="coverPhotoModalModalLabel", aria-hidden="true")
+        .modal-dialog
+            .modal-content
+                .modal-header
+                    h5#coverPhotoModalModalLabel.modal-title Upload a new cover photo
+                    button.btn-close(type="button", data-bs-dismiss="modal", aria-label="Close")
+                .modal-body
+                    input#coverPhoto(type="file", name="filePhoto")
+
+                    .imagePreviewContainer 
+                        img#coverPreview
+
+                .modal-footer
+                    button.btn.btn-secondary(type="button", data-bs-dismiss="modal") Cancel
+                    button#coverPhotoButton.btn.btn-primary(type="button") Save
+
+mixin createPinPostUploadModal()
+    #confirmPinModal.modal.fade(tabindex="-1", aria-labelledby="confirmPinModalModalLabel", aria-hidden="true")
+        .modal-dialog
+            .modal-content
+                .modal-header
+                    h5#confirmPinModalModalModalLabel.modal-title Pin this post?
+                    button.btn-close(type="button", data-bs-dismiss="modal", aria-label="Close")
+                .modal-body
+                    p This post will appear on the top of your profile. You can only pin one post
+
+                .modal-footer
+                    button.btn.btn-secondary(type="button", data-bs-dismiss="modal") Cancel
+                    button#pinPostButton.btn.btn-primary(type="button") Pin
+
+mixin createUnpinPostModal()
+    #unpinModal.modal.fade(tabindex="-1", aria-labelledby="unpinModalLabel", aria-hidden="true")
+        .modal-dialog
+            .modal-content
+                .modal-header
+                    h5#unpinModalModalModalLabel.modal-title Unpin this post?
+                    button.btn-close(type="button", data-bs-dismiss="modal", aria-label="Close")
+                .modal-body
+                    p  This post will be unpinned;
+
+                .modal-footer
+                    button.btn.btn-secondary(type="button", data-bs-dismiss="modal") Cancel
+                    button#unpinPostButton.btn.btn-primary(type="button") Unpin
+
+
+
+
+
+
+
+
+                    

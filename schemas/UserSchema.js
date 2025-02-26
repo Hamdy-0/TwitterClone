@@ -33,6 +33,9 @@ const userSchema = new Schema(
       type: String,
       default: "/images/profilePic.jpg",
     },
+    coverPhoto: {
+      type: String,
+    },
     likes: [
       {
         type: Schema.Types.ObjectId,
@@ -43,6 +46,18 @@ const userSchema = new Schema(
       {
         type: Schema.Types.ObjectId,
         ref: "Post",
+      },
+    ],
+    following: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    followers: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
       },
     ],
   },

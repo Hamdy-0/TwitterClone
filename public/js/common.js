@@ -1,3 +1,7 @@
+// Globals
+
+let cropper;
+
 $("#postTextarea,#replyextarea").keyup((event) => {
   const textbox = $(event.target);
   const value = textbox.val().trim();
@@ -49,10 +53,52 @@ $("#replyModal").on("show.bs.modal", (event) => {
     outputPosts(results.postData, $("#originalPostContainer"));
   });
 });
+$("#confirmPinModal").on("show.bs.modal", (event) => {
+  const button = $(event.relatedTarget);
+  const postId = getPostIdFromElement(button);
+  $("#pinPostButton").data("id", postId);
+});
+$("#unpinModal").on("show.bs.modal", (event) => {
+  const button = $(event.relatedTarget);
+  const postId = getPostIdFromElement(button);
+  $("#unpinPostButton").data("id", postId);
+});
 $("#deletePostModal").on("show.bs.modal", (event) => {
   const button = $(event.relatedTarget);
   const postId = getPostIdFromElement(button);
   $("#deletePostReplyButton").data("id", postId);
+});
+$("#pinPostButton").click((event) => {
+  const postId = $(event.target).data("id");
+  $.ajax({
+    url: `/api/posts/${postId}`,
+    type: "PUT",
+    data: { pinned: true },
+    success: (data, status, xhr) => {
+      if (xhr.status != 204) {
+        alert("could not pin post");
+
+        return;
+      }
+      location.reload();
+    },
+  });
+});
+$("#unpinPostButton").click((event) => {
+  const postId = $(event.target).data("id");
+  $.ajax({
+    url: `/api/posts/${postId}`,
+    type: "PUT",
+    data: { pinned: false },
+    success: (data, status, xhr) => {
+      if (xhr.status != 204) {
+        alert("could not pin post");
+
+        return;
+      }
+      location.reload();
+    },
+  });
 });
 $("#deletePostReplyButton").click((event) => {
   const postId = $(event.target).data("id");
@@ -71,6 +117,106 @@ $("#deletePostReplyButton").click((event) => {
 });
 $("#replyModal").on("hidden.bs.modal", () => {
   $("#originalPostContainer").html("");
+});
+$("#filePhoto").change(function () {
+  if (this.files && this.files[0]) {
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      const image = document.getElementById("imagePreview");
+      image.src = e.target.result;
+      image.style.display = "block"; // Ensure the image is visible
+
+      // Destroy existing Cropper instance if it exists
+      if (cropper) {
+        cropper.destroy();
+      }
+
+      // Initialize Cropper
+      cropper = new Cropper(image, {
+        aspectRatio: 1 / 1, // Set aspect ratio (e.g., 1:1 for square)
+        viewMode: 1, // Restrict crop box to the image size
+        background: false, // Disable background
+      });
+    };
+
+    reader.readAsDataURL(this.files[0]);
+  }
+});
+$("#coverPhoto").change(function () {
+  if (this.files && this.files[0]) {
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      const image = document.getElementById("coverPreview");
+      image.src = e.target.result;
+      image.style.display = "block"; // Ensure the image is visible
+
+      // Destroy existing Cropper instance if it exists
+      if (cropper) {
+        cropper.destroy();
+      }
+
+      // Initialize Cropper
+      cropper = new Cropper(image, {
+        aspectRatio: 16 / 9, // Set aspect ratio (e.g., 1:1 for square)
+        viewMode: 1, // Restrict crop box to the image size
+        background: false, // Disable background
+      });
+    };
+
+    reader.readAsDataURL(this.files[0]);
+  }
+});
+$("#imageUploadButton").click(() => {
+  let canvas = cropper.getCroppedCanvas();
+
+  if (canvas == null) {
+    alert("could not upload image , make sure its an image file");
+    return;
+  }
+  canvas.toBlob((blob) => {
+    let formData = new FormData();
+    formData.append("croppedImage", blob);
+
+    $.ajax({
+      url: "/api/users/profilePicture",
+      type: "POST",
+      data: formData,
+      processData: false,
+      contentType: false,
+      success: (data, status, xhr) => {
+        location.reload();
+      },
+    });
+
+    console.log(formData);
+  });
+});
+$("#coverPhotoButton").click(() => {
+  let canvas = cropper.getCroppedCanvas();
+
+  if (canvas == null) {
+    alert("could not upload image , make sure its an image file");
+    return;
+  }
+  canvas.toBlob((blob) => {
+    let formData = new FormData();
+    formData.append("croppedImage", blob);
+
+    $.ajax({
+      url: "/api/users/coverPhoto",
+      type: "POST",
+      data: formData,
+      processData: false,
+      contentType: false,
+      success: (data, status, xhr) => {
+        location.reload();
+      },
+    });
+
+    console.log(formData);
+  });
 });
 
 $(document).on("click", ".likeButton", (event) => {
@@ -116,6 +262,35 @@ $(document).on("click", ".post", (event) => {
   if (postId !== undefined && !element.is("button")) {
     window.location.href = "/posts/" + postId;
   }
+});
+$(document).on("click", ".followButton", (e) => {
+  let button = $(e.target);
+  let userId = button.data().user;
+  $.ajax({
+    url: `/api/users/${userId}/follow`,
+    type: "PUT",
+    success: (data, status, xhr) => {
+      if (xhr.status == 404) {
+        alert("user not found");
+        return;
+      }
+      let difference = 1;
+      if (data.following && data.following.includes(userId)) {
+        button.addClass("following");
+        button.text("Unfollow");
+      } else {
+        button.removeClass("following");
+        button.text("Follow");
+        difference = -1;
+      }
+      let followersLabel = $("#followersValue");
+      if (followersLabel.length != 0) {
+        let followersText = followersLabel.text();
+        followersText = parseInt(followersText);
+        followersLabel.text(followersText + difference);
+      }
+    },
+  });
 });
 function getPostIdFromElement(element) {
   const isRoot = element.hasClass("post");
@@ -171,8 +346,19 @@ function createPostHtml(postData, largeFont = false) {
   }
 
   let buttons = "";
+  let pinnedPostText = "";
   if (postData.postedBy._id == userLoggedIn._id) {
-    buttons = `<button type="button", data-bs-toggle="modal", data-bs-target="#deletePostModal" data-id="${postData._id}" ><i class="fas fa-times"></i></button>`;
+    let dataTarget = "#confirmPinModal";
+    let pinnedClass = "";
+    if (postData.pinned === true) {
+      dataTarget = "#unpinModal";
+      pinnedClass = "active";
+      pinnedPostText = `<i class="fas fa-thumbtack"></i> <span>Pinned post</span>`;
+    }
+    buttons = `
+              <button class='pinButton ${pinnedClass}' type="button", data-bs-toggle="modal", data-bs-target="${dataTarget}" data-id="${postData._id}" ><i class="fas fa-thumbtack"></i></button>
+    
+              <button type="button", data-bs-toggle="modal", data-bs-target="#deletePostModal" data-id="${postData._id}" ><i class="fas fa-times"></i></button>`;
   }
   return `<div class='post ${largeFontClass}' data-id='${postData._id}'>
   <div class='postActionContainer'>
@@ -183,6 +369,7 @@ function createPostHtml(postData, largeFont = false) {
          <img src='${postedBy.profilePic}'>
        </div>
        <div class="postContentContainer">
+       <div class='pinnedPostText'>${pinnedPostText}</div>
           <div class="header">
             <a href='/profile/${
               postedBy.username
