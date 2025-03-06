@@ -1,4 +1,10 @@
+let typing = false;
+let lastTypingTime;
+
 $(document).ready(() => {
+  socket.emit("join room", chatId);
+  socket.on("typing", () => $(".typingDots").show());
+  socket.on("stop typing", () => $(".typingDots").hide());
   $.get(`/api/chats/${chatId}`, (data) => {
     $("#chatName").text(getChatName(data));
   });
@@ -13,6 +19,7 @@ $(document).ready(() => {
     let mesaagesHtml = messages.join("");
     addMessagesHtmlToPage(mesaagesHtml);
     scrollToBottom(false);
+    markAllmessagesAsRead();
     $(".loadingSpinnerContainer").remove();
     $(".chatContainer").css("visibility", "visible");
   });
@@ -39,11 +46,32 @@ $(".sendMessageButton").click(() => {
   messageSubmitted();
 });
 $(".inputTextbox").keydown((e) => {
+  updateTyping();
   if (e.which === 13 && !e.shiftKey) {
     messageSubmitted();
     return false;
   }
 });
+function updateTyping() {
+  if (!connected) return;
+
+  if (!typing) {
+    typing = true;
+    socket.emit("typing", chatId);
+  }
+  lastTypingTime = new Date().getTime();
+  let timerLength = 3000;
+
+  setTimeout(() => {
+    let timeNow = new Date().getTime();
+    let timeDiff = timeNow - lastTypingTime;
+
+    if (timeDiff >= timerLength && typing) {
+      socket.emit("stop typing", chatId);
+      typing = false;
+    }
+  }, timerLength);
+}
 function addMessagesHtmlToPage(html) {
   $(".chatMessages").append(html);
 }
@@ -52,6 +80,8 @@ function messageSubmitted() {
   if (content != "") {
     sendMessage(content);
     $(".inputTextbox").val("");
+    socket.emit("stop typing", chatId);
+    typing = false;
   }
 }
 function sendMessage(content) {
@@ -65,6 +95,9 @@ function sendMessage(content) {
         return;
       }
       addChatMessageHtml(data);
+      if (connected) {
+        socket.emit("new message", data);
+      }
     }
   );
 }
@@ -128,4 +161,12 @@ function scrollToBottom(animated) {
   } else {
     container.scrollTop(scrollHeight);
   }
+}
+
+function markAllmessagesAsRead() {
+  $.ajax({
+    url: `/api/chats/${chatId}/messages/markAsRead`,
+    type: "PUT",
+    success: () => refreshMessagesBadge(),
+  });
 }
